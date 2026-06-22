@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>bc — Arbitrary Precision Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --surface2:  #1c2330;
+    --border:    #30363d;
+    --border2:   #21262d;
+    --green:     #3fb950;
+    --green-dim: #238636;
+    --blue:      #58a6ff;
+    --orange:    #f0883e;
+    --purple:    #bc8cff;
+    --red:       #f85149;
+    --yellow:    #e3b341;
+    --text:      #e6edf3;
+    --text-muted:#8b949e;
+    --text-dim:  #484f58;
+    --mono:      'JetBrains Mono', monospace;
+    --sans:      'Inter', system-ui, sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { font-size: 16px; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ── Header ── */
+  header {
+    width: 100%;
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+  }
+  .logo-mark {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--green);
+    background: rgba(63,185,80,0.1);
+    border: 1px solid rgba(63,185,80,0.3);
+    padding: 2px 10px;
+    border-radius: 6px;
+    letter-spacing: 1px;
+  }
+  .logo-sub {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+  .header-links {
+    margin-left: auto;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  .header-links a {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: color 0.15s;
+  }
+  .header-links a:hover { color: var(--blue); }
+
+  /* ── Layout ── */
+  main {
+    width: 100%;
+    max-width: 1000px;
+    padding: 32px 20px 60px;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* ── Terminal Panel ── */
+  .terminal-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .terminal-bar {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #ffbd2e; }
+  .dot-g { background: #28ca41; }
+  .terminal-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-left: 8px;
+  }
+  .terminal-badge {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--green);
+    border: 1px solid var(--green-dim);
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: rgba(63,185,80,0.08);
+  }
+
+  /* ── Output ── */
+  #output {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.7;
+    padding: 20px;
+    min-height: 320px;
+    max-height: 420px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  #output::-webkit-scrollbar { width: 4px; }
+  #output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .line { display: flex; gap: 10px; margin-bottom: 4px; }
+  .line-prompt { color: var(--green); user-select: none; flex-shrink: 0; }
+  .line-input  { color: var(--text); }
+  .line-result { color: var(--blue); padding-left: 20px; }
+  .line-error  { color: var(--red); padding-left: 20px; }
+  .line-info   { color: var(--text-muted); padding-left: 20px; font-size: 12px; }
+  .line-system { color: var(--purple); }
+
+  /* ── Input row ── */
+  .input-row {
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    gap: 8px;
+    background: var(--surface2);
+  }
+  .prompt-label {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--green);
+    user-select: none;
+    flex-shrink: 0;
+  }
+  #expr-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    color: var(--text);
+    caret-color: var(--green);
+  }
+  #expr-input::placeholder { color: var(--text-dim); }
+  .btn-run {
+    background: var(--green-dim);
+    border: 1px solid var(--green);
+    border-radius: 6px;
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .btn-run:hover { background: var(--green); }
+
+  /* Precision row */
+  .meta-row {
+    border-top: 1px solid var(--border2);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-family: var(--mono);
+    color: var(--text-muted);
+  }
+  .meta-item label { color: var(--text-dim); }
+  .meta-item input[type=number] {
+    width: 52px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--blue);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 3px 6px;
+    outline: none;
+  }
+  .meta-item input[type=number]:focus { border-color: var(--blue); }
+  .btn-clear {
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-clear:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── Side Panel ── */
+  .side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Button Pad */
+  .btn-pad {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .btn-pad-header {
+    padding: 10px 14px;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border2);
+    background: var(--surface2);
+  }
+  .btn-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border2);
+    padding: 1px;
+  }
+  .calc-btn {
+    background: var(--surface);
+    border: none;
+    padding: 12px 6px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+    text-align: center;
+    border-radius: 0;
+  }
+  .calc-btn:hover { background: var(--surface2); color: #fff; }
+  .calc-btn:active { background: var(--border); }
+  .calc-btn.op    { color: var(--orange); }
+  .calc-btn.fn    { color: var(--purple); font-size: 11px; }
+  .calc-btn.const { color: var(--yellow); font-size: 11px; }
+  .calc-btn.ctrl  { color: var(--red); }
+  .calc-btn.eq    { background: var(--green-dim); color: #fff; }
+  .calc-btn.eq:hover { background: var(--green); }
+  .calc-btn.span2 { grid-column: span 2; }
+
+  /* History */
+  .history-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .history-header {
+    padding: 10px 14px;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border2);
+    background: var(--surface2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  #history-list {
+    max-height: 220px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .history-item {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border2);
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-item:hover { background: var(--surface2); }
+  .hist-expr { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+  .hist-result { font-family: var(--mono); font-size: 13px; color: var(--blue); margin-top: 2px; }
+
+  /* Cheat sheet */
+  .ref-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .ref-header {
+    padding: 10px 14px;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border2);
+    background: var(--surface2);
+  }
+  .ref-body {
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ref-row {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    font-family: var(--mono);
+    font-size: 11.5px;
+  }
+  .ref-key   { color: var(--purple); flex-shrink: 0; min-width: 80px; }
+  .ref-desc  { color: var(--text-muted); }
+
+  /* Notification */
+  #notif {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    z-index: 100;
+  }
+  #notif.show { opacity: 1; transform: translateY(0); }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    main { grid-template-columns: 1fr; }
+    .side-panel { order: -1; }
+    .btn-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo-mark">bc</span>
+  <span class="logo-sub">arbitrary precision calculator</span>
+  <div class="header-links">
+    <a href="https://github.com/gavinhoward/bc" target="_blank">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      gavinhoward/bc
+    </a>
+  </div>
+</header>
+
+<main>
+  <!-- Terminal -->
+  <div class="terminal-panel">
+    <div class="terminal-bar">
+      <span class="dot dot-r"></span>
+      <span class="dot dot-y"></span>
+      <span class="dot dot-g"></span>
+      <span class="terminal-title">bc — interactive session</span>
+      <span class="terminal-badge">● READY</span>
+    </div>
+
+    <div id="output">
+      <div class="line"><span class="line-system">bc 7.0.3 (Web Edition) — Arbitrary Precision Calculator</span></div>
+      <div class="line"><span class="line-info">Copyright (c) 2018-2024 Gavin D. Howard and contributors.</span></div>
+      <div class="line"><span class="line-info">Based on gavinhoward/bc — BSD 2-clause License.</span></div>
+      <div class="line"><span class="line-info">Type an expression and press Enter or click Run.</span></div>
+      <div class="line" style="margin-top:8px"><span class="line-info">Try: sqrt(2), e(1), s(3.14159/6), 2^100, scale=50; 1/3</span></div>
+    </div>
+
+    <div class="input-row">
+      <span class="prompt-label">bc&gt;</span>
+      <input id="expr-input" type="text" placeholder="expression…" autocomplete="off" spellcheck="false" autofocus>
+      <button class="btn-run" onclick="evaluate()">Run ↵</button>
+    </div>
+
+    <div class="meta-row">
+      <div class="meta-item">
+        <label>scale</label>
+        <input id="scale-input" type="number" value="10" min="0" max="200" title="소수점 자리수 (precision)">
+      </div>
+      <div class="meta-item">
+        <label>ibase</label>
+        <input id="ibase-input" type="number" value="10" min="2" max="36" title="입력 진법">
+      </div>
+      <div class="meta-item">
+        <label>obase</label>
+        <input id="obase-input" type="number" value="10" min="2" max="36" title="출력 진법">
+      </div>
+      <button class="btn-clear" onclick="clearOutput()">✕ clear</button>
+    </div>
+  </div>
+
+  <!-- Side -->
+  <div class="side-panel">
+
+    <!-- Button pad -->
+    <div class="btn-pad">
+      <div class="btn-pad-header">Keypad</div>
+      <div class="btn-grid">
+        <!-- Row 1 -->
+        <button class="calc-btn fn"   onclick="insert('sqrt(')">√</button>
+        <button class="calc-btn fn"   onclick="insert('e(')">eˣ</button>
+        <button class="calc-btn fn"   onclick="insert('l(')">ln</button>
+        <button class="calc-btn ctrl" onclick="backspace()">⌫</button>
+        <!-- Row 2 -->
+        <button class="calc-btn fn"   onclick="insert('s(')">sin</button>
+        <button class="calc-btn fn"   onclick="insert('c(')">cos</button>
+        <button class="calc-btn fn"   onclick="insert('a(')">atan</button>
+        <button class="calc-btn op"   onclick="insert('^')">xʸ</button>
+        <!-- Row 3 -->
+        <button class="calc-btn const" onclick="insert('4*a(1)')">π</button>
+        <button class="calc-btn const" onclick="insert('e(1)')">e</button>
+        <button class="calc-btn op"   onclick="insert('%')">mod</button>
+        <button class="calc-btn op"   onclick="insert('/')">÷</button>
+        <!-- Row 4 -->
+        <button class="calc-btn" onclick="insert('7')">7</button>
+        <button class="calc-btn" onclick="insert('8')">8</button>
+        <button class="calc-btn" onclick="insert('9')">9</button>
+        <button class="calc-btn op" onclick="insert('*')">×</button>
+        <!-- Row 5 -->
+        <button class="calc-btn" onclick="insert('4')">4</button>
+        <button class="calc-btn" onclick="insert('5')">5</button>
+        <button class="calc-btn" onclick="insert('6')">6</button>
+        <button class="calc-btn op" onclick="insert('-')">−</button>
+        <!-- Row 6 -->
+        <button class="calc-btn" onclick="insert('1')">1</button>
+        <button class="calc-btn" onclick="insert('2')">2</button>
+        <button class="calc-btn" onclick="insert('3')">3</button>
+        <button class="calc-btn op" onclick="insert('+')">+</button>
+        <!-- Row 7 -->
+        <button class="calc-btn span2" onclick="insert('0')">0</button>
+        <button class="calc-btn" onclick="insert('.')">.</button>
+        <button class="calc-btn eq"   onclick="evaluate()">=</button>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="history-panel">
+      <div class="history-header">
+        <span>History</span>
+        <span id="hist-count" style="color:var(--text-dim);font-size:10px">0 items</span>
+      </div>
+      <div id="history-list"><div style="padding:16px 14px;font-family:var(--mono);font-size:11px;color:var(--text-dim)">No history yet.</div></div>
+    </div>
+
+    <!-- Reference -->
+    <div class="ref-panel">
+      <div class="ref-header">Quick Reference</div>
+      <div class="ref-body">
+        <div class="ref-row"><span class="ref-key">sqrt(x)</span><span class="ref-desc">Square root</span></div>
+        <div class="ref-row"><span class="ref-key">s(x)</span><span class="ref-desc">Sine (radians)</span></div>
+        <div class="ref-row"><span class="ref-key">c(x)</span><span class="ref-desc">Cosine (radians)</span></div>
+        <div class="ref-row"><span class="ref-key">a(x)</span><span class="ref-desc">Arc tangent</span></div>
+        <div class="ref-row"><span class="ref-key">l(x)</span><span class="ref-desc">Natural log</span></div>
+        <div class="ref-row"><span class="ref-key">e(x)</span><span class="ref-desc">Exponential eˣ</span></div>
+        <div class="ref-row"><span class="ref-key">4*a(1)</span><span class="ref-desc">π (pi)</span></div>
+        <div class="ref-row"><span class="ref-key">x^y</span><span class="ref-desc">x to the power y</span></div>
+        <div class="ref-row"><span class="ref-key">x%y</span><span class="ref-desc">Remainder (modulo)</span></div>
+        <div class="ref-row"><span class="ref-key">scale=N</span><span class="ref-desc">Set decimal precision</span></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="notif">Copied!</div>
+
+<script>
+// ──────────────────────────────────────────────────────────────
+//  Arbitrary-precision math engine in JavaScript
+//  Implements bc's standard math library functions
+// ──────────────────────────────────────────────────────────────
+
+// We use a high-precision Decimal implementation via BigDecimal-style arithmetic
+// with scale-aware division, then layer bc's math library on top.
+
+class BC {
+  constructor() {
+    this.scale  = 10;
+    this.ibase  = 10;
+    this.obase  = 10;
+    this.vars   = {};
+    this.PREC   = 80; // internal guard digits
+  }
+
+  // ── Tokenizer ──────────────────────────────────────────────
+  tokenize(src) {
+    const tokens = [];
+    let i = 0;
+    while (i < src.length) {
+      const c = src[i];
+      if (/\s/.test(c)) { i++; continue; }
+      if (/[0-9.]/.test(c)) {
+        let num = '';
+        while (i < src.length && /[0-9.]/.test(src[i])) num += src[i++];
+        tokens.push({ type: 'NUM', val: num });
+      } else if (/[a-zA-Z_]/.test(c)) {
+        let id = '';
+        while (i < src.length && /[a-zA-Z0-9_]/.test(src[i])) id += src[i++];
+        tokens.push({ type: 'ID', val: id });
+      } else if (c === '/' && src[i+1] === '*') {
+        while (i < src.length && !(src[i] === '*' && src[i+1] === '/')) i++;
+        i += 2;
+      } else {
+        tokens.push({ type: 'SYM', val: c }); i++;
+      }
+    }
+    tokens.push({ type: 'EOF', val: '' });
+    return tokens;
+  }
+
+  // ── Recursive-descent parser / evaluator ───────────────────
+  parse(src) {
+    // Split on semicolons: execute each statement in order,
+    // return only the last non-empty result (bc behaviour).
+    const stmts = src.split(';').map(s => s.trim()).filter(s => s.length > 0);
+    let lastResult = null;
+    for (const stmt of stmts) {
+      lastResult = this.parseOne(stmt);
+    }
+    return lastResult ?? '';
+  }
+
+  parseOne(src) {
+    // Handle assignment-like statements: scale = N, var = expr
+    const assignRe = /^\s*([a-z_][a-z0-9_]*)\s*=\s*(.+)$/i;
+    const m = src.match(assignRe);
+    if (m && m[1].toLowerCase() !== 'e') {
+      const key = m[1].toLowerCase();
+      const val = this.evalExpr(m[2]);
+      // val is stored as bigint with PREC implicit decimal places.
+      // Extract the true integer by dividing out DENOM.
+      const intVal = Number(val / this.DENOM());
+      if (key === 'scale') {
+        this.scale = Math.max(0, Math.min(200, intVal));
+        const el = document.getElementById('scale-input');
+        if (el) el.value = this.scale;
+        return `scale = ${this.scale}`;
+      } else if (key === 'ibase') {
+        this.ibase = Math.max(2, Math.min(36, intVal));
+        const el = document.getElementById('ibase-input');
+        if (el) el.value = this.ibase;
+        return `ibase = ${this.ibase}`;
+      } else if (key === 'obase') {
+        this.obase = Math.max(2, Math.min(36, intVal));
+        const el = document.getElementById('obase-input');
+        if (el) el.value = this.obase;
+        return `obase = ${this.obase}`;
+      } else {
+        this.vars[key] = val;
+        return this.formatNum(val);
+      }
+    }
+    const val = this.evalExpr(src);
+    return this.formatNum(val);
+  }
+
+  evalExpr(src) {
+    this.tokens = this.tokenize(src);
+    this.pos    = 0;
+    const v = this.parseExpr();
+    if (this.cur().type !== 'EOF') throw new Error('Unexpected: ' + this.cur().val);
+    return v;
+  }
+
+  cur()  { return this.tokens[this.pos]; }
+  eat(v) { const t = this.cur(); this.pos++; return t; }
+  expect(v) {
+    if (this.cur().val !== v) throw new Error(`Expected '${v}', got '${this.cur().val}'`);
+    return this.eat();
+  }
+
+  parseExpr() { return this.parseAddSub(); }
+
+  parseAddSub() {
+    let left = this.parseMulDiv();
+    while (this.cur().val === '+' || this.cur().val === '-') {
+      const op = this.eat().val;
+      const right = this.parseMulDiv();
+      left = op === '+' ? this.add(left, right) : this.sub(left, right);
+    }
+    return left;
+  }
+
+  parseMulDiv() {
+    let left = this.parsePow();
+    while (this.cur().val === '*' || this.cur().val === '/' || this.cur().val === '%') {
+      const op = this.eat().val;
+      const right = this.parsePow();
+      if (op === '*') left = this.mul(left, right);
+      else if (op === '/') left = this.div(left, right);
+      else left = this.mod(left, right);
+    }
+    return left;
+  }
+
+  parsePow() {
+    let base = this.parseUnary();
+    if (this.cur().val === '^') {
+      this.eat();
+      const exp = this.parsePow(); // right-associative
+      base = this.pow(base, exp);
+    }
+    return base;
+  }
+
+  parseUnary() {
+    if (this.cur().val === '-') { this.eat(); return this.neg(this.parsePrimary()); }
+    if (this.cur().val === '+') { this.eat(); return this.parsePrimary(); }
+    return this.parsePrimary();
+  }
+
+  parsePrimary() {
+    const t = this.cur();
+    // Number
+    if (t.type === 'NUM') {
+      this.eat();
+      return this.parseNum(t.val);
+    }
+    // Parenthesised
+    if (t.val === '(') {
+      this.eat(); const v = this.parseExpr(); this.expect(')'); return v;
+    }
+    // Functions / identifiers
+    if (t.type === 'ID') {
+      this.eat();
+      const name = t.val.toLowerCase();
+      if (this.cur().val === '(') {
+        this.eat(); // consume (
+        const args = [];
+        if (this.cur().val !== ')') {
+          args.push(this.parseExpr());
+          while (this.cur().val === ',') { this.eat(); args.push(this.parseExpr()); }
+        }
+        this.expect(')');
+        return this.callFn(name, args);
+      }
+      // Variable / constant
+      if (name === 'pi') return this.computePi();
+      if (name === 'e' && this.cur().val !== '(') return this.computeE();
+      if (name in this.vars) return this.vars[name];
+      if (name === 'scale') return BigInt(this.scale);
+      throw new Error(`Unknown identifier: ${name}`);
+    }
+    throw new Error(`Unexpected token: ${t.val || 'EOF'}`);
+  }
+
+  // ── Number representation ──────────────────────────────────
+  // We work in BigInt with a fixed denominator 10^PREC.
+  DENOM() { return 10n ** BigInt(this.PREC); }
+
+  parseNum(s) {
+    // Parse decimal string to internal representation
+    const [int, frac = ''] = s.split('.');
+    const full = int + frac.padEnd(this.PREC, '0').slice(0, this.PREC);
+    return BigInt(full || '0');
+  }
+
+  fromInt(n) { return BigInt(n) * this.DENOM(); }
+  toFloat(n) { return Number(n) / Number(this.DENOM()); }
+
+  formatNum(n) {
+    if (typeof n === 'string') return n;
+    const neg = n < 0n;
+    const abs = neg ? -n : n;
+    const D   = this.DENOM();
+    const int = abs / D;
+    const frac= abs % D;
+    const fracStr = frac.toString().padStart(this.PREC, '0').slice(0, this.scale);
+    let result;
+    if (this.scale === 0 || /^0+$/.test(fracStr)) {
+      result = (neg ? '-' : '') + int.toString();
+    } else {
+      // Trim trailing zeros
+      result = (neg ? '-' : '') + int.toString() + '.' + fracStr.replace(/0+$/, '');
+      if (result.endsWith('.')) result = result.slice(0,-1);
+    }
+
+    // Handle obase conversion
+    if (this.obase !== 10 && this.scale === 0) {
+      const intPart = neg ? -int : int;
+      if (intPart >= 0n) result = intPart.toString(this.obase).toUpperCase();
+    }
+    return result;
+  }
+
+  // ── Arithmetic ─────────────────────────────────────────────
+  add(a, b) { return a + b; }
+  sub(a, b) { return a - b; }
+  mul(a, b) { return (a * b) / this.DENOM(); }
+  div(a, b) {
+    if (b === 0n) throw new Error('Division by zero');
+    return (a * this.DENOM()) / b;
+  }
+  mod(a, b) {
+    if (b === 0n) throw new Error('Modulo by zero');
+    const q = a / b;
+    return a - q * b;
+  }
+  neg(a) { return -a; }
+
+  pow(base, exp) {
+    // exp must be integer for BigInt pow
+    const expF = this.toFloat(exp);
+    if (!Number.isInteger(expF)) {
+      // Use e^(exp*ln(base))
+      if (base <= 0n) throw new Error('Non-integer power of non-positive base');
+      return this.mathExp(this.mul(exp, this.mathLn(base)));
+    }
+    const D = this.DENOM();
+    if (expF === 0) return D; // base^0 = 1
+    if (expF > 0) {
+      let r = D;
+      let b = base;
+      let e = BigInt(expF);
+      while (e > 0n) {
+        if (e & 1n) r = (r * b) / D;
+        b = (b * b) / D;
+        e >>= 1n;
+      }
+      return r;
+    } else {
+      return this.div(D, this.pow(base, this.neg(exp)));
+    }
+  }
+
+  // ── Math library (Taylor series) ───────────────────────────
+  callFn(name, args) {
+    const a0 = args[0];
+    switch(name) {
+      case 'sqrt': return this.mathSqrt(a0);
+      case 'e':    return this.mathExp(a0);
+      case 'l':    return this.mathLn(a0);
+      case 's':    return this.mathSin(a0);
+      case 'c':    return this.mathCos(a0);
+      case 'a':    return this.mathAtan(a0);
+      case 'abs':  return a0 < 0n ? -a0 : a0;
+      case 'int':  { const D=this.DENOM(); return (a0/D)*D; }
+      case 'length': { const s=this.formatNum(a0).replace('-','').replace('.',''); return this.fromInt(s.length); }
+      case 'scale': { const s=this.formatNum(a0); const d=s.indexOf('.'); return this.fromInt(d<0?0:s.length-d-1); }
+      default: throw new Error(`Unknown function: ${name}()`);
+    }
+  }
+
+  mathSqrt(x) {
+    if (x < 0n) throw new Error('sqrt of negative number');
+    if (x === 0n) return 0n;
+    // Newton's method
+    const D = this.DENOM();
+    let guess = BigInt(Math.round(Math.sqrt(Number(x) / Number(D)) * Number(D)));
+    if (guess === 0n) guess = 1n;
+    for (let i = 0; i < 60; i++) {
+      const next = (guess + (x * D) / guess) / 2n;
+      if (next === guess || next === guess - 1n || next === guess + 1n) break;
+      guess = next;
+    }
+    return guess;
+  }
+
+  mathExp(x) {
+    // e^x = sum x^n/n!
+    const D = this.DENOM();
+    let term = D; // x^0/0! = 1
+    let sum  = D;
+    for (let n = 1n; n < 120n; n++) {
+      term = (term * x) / (n * D);
+      sum += term;
+      if (term === 0n || (term > 0n ? term : -term) < 100n) break;
+    }
+    return sum;
+  }
+
+  mathLn(x) {
+    if (x <= 0n) throw new Error('ln of non-positive number');
+    const D = this.DENOM();
+    // Use ln(x) = 2*atanh((x-1)/(x+1)) for faster convergence
+    const y = this.div(this.sub(x, D), this.add(x, D));
+    // atanh(y) = y + y^3/3 + y^5/5 + …
+    let term = y;
+    let sum  = y;
+    const y2 = this.mul(y, y);
+    for (let n = 1n; n < 120n; n++) {
+      term = this.mul(term, y2);
+      sum += term / (2n*n + 1n);
+      if ((term > 0n ? term : -term) < 100n) break;
+    }
+    return 2n * sum;
+  }
+
+  mathSin(x) {
+    // Taylor: sin(x) = x - x^3/3! + x^5/5! - …
+    // Reduce x mod 2pi first
+    const twopi = 2n * this.computePi();
+    const D = this.DENOM();
+    // reduce
+    let xr = this.mod(x, twopi);
+    if (xr < 0n) xr = xr + twopi;
+    const x2 = this.mul(xr, xr);
+    let term = xr;
+    let sum  = xr;
+    for (let n = 1n; n < 80n; n++) {
+      term = this.div(this.neg(this.mul(this.mul(term, x2), D)), (2n*n) * (2n*n+1n) * D);
+      sum += term;
+      if ((term < 0n ? -term : term) < 10n) break;
+    }
+    return sum;
+  }
+
+  mathCos(x) {
+    // cos(x) = sin(x + pi/2)
+    const pi = this.computePi();
+    const halfpi = pi / 2n;
+    return this.mathSin(x + halfpi);
+  }
+
+  mathAtan(x) {
+    // For |x| <= 1: atan(x) = x - x^3/3 + x^5/5 - …
+    // For |x| > 1:  atan(x) = pi/2 - atan(1/x)
+    const D = this.DENOM();
+    const neg = x < 0n;
+    const ax  = neg ? -x : x;
+    if (ax > D) {
+      const pi = this.computePi();
+      const halfpi = pi / 2n;
+      const r = this.sub(halfpi, this.mathAtan(this.div(D, ax)));
+      return neg ? -r : r;
+    }
+    const x2   = this.mul(ax, ax);
+    let term   = ax;
+    let sum    = ax;
+    for (let n = 1n; n < 100n; n++) {
+      term = this.mul(term, x2);
+      const contrib = term / (2n*n+1n);
+      if (n % 2n === 1n) sum -= contrib; else sum += contrib;
+      if (contrib < 10n) break;
+    }
+    return neg ? -sum : sum;
+  }
+
+  fromFloat(f) {
+    // Convert float to internal bigint representation with PREC digits
+    const sign = f < 0 ? -1n : 1n;
+    const abs  = Math.abs(f);
+    const s    = abs.toFixed(this.PREC + 4);
+    return sign * this.parseNum(s);
+  }
+
+  computePi() {
+    // π = 4*atan(1), but we want high precision
+    // Machin: π/4 = 4*atan(1/5) - atan(1/239)
+    const D   = this.DENOM();
+    const a5  = this._atanRecip(5n);
+    const a239= this._atanRecip(239n);
+    return 4n * (4n * a5 - a239);
+  }
+
+  _atanRecip(k) {
+    // atan(1/k) = 1/k - 1/(3k^3) + 1/(5k^5) - …
+    const D  = this.DENOM();
+    const k2 = k * k;
+    let power= D / k;
+    let sum  = power;
+    for (let n = 1n; n < 80n; n++) {
+      power = power / k2;
+      const term = power / (2n*n+1n);
+      if (n % 2n === 1n) sum -= term; else sum += term;
+      if (term === 0n) break;
+    }
+    return sum;
+  }
+
+  computeE() {
+    return this.mathExp(this.DENOM()); // e^1
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+//  UI
+// ──────────────────────────────────────────────────────────────
+const bc      = new BC();
+const output  = document.getElementById('output');
+const input   = document.getElementById('expr-input');
+const histList= document.getElementById('history-list');
+const histCnt = document.getElementById('hist-count');
+const history = [];
+let historyIdx= -1;
+let historyBuf= '';
+
+function syncSettings() {
+  const sc = parseInt(document.getElementById('scale-input').value);
+  const ib = parseInt(document.getElementById('ibase-input').value);
+  const ob = parseInt(document.getElementById('obase-input').value);
+  if (!isNaN(sc)) bc.scale  = Math.max(0, Math.min(200, sc));
+  if (!isNaN(ib)) bc.ibase  = Math.max(2, Math.min(36, ib));
+  if (!isNaN(ob)) bc.obase  = Math.max(2, Math.min(36, ob));
+}
+
+function addLine(cls, prefix, text) {
+  const div = document.createElement('div');
+  div.className = 'line';
+  if (prefix) {
+    const p = document.createElement('span');
+    p.className = 'line-prompt';
+    p.textContent = prefix;
+    div.appendChild(p);
+  }
+  const s = document.createElement('span');
+  s.className = cls;
+  s.textContent = text;
+  div.appendChild(s);
+  output.appendChild(div);
+  output.scrollTop = output.scrollHeight;
+}
+
+function evaluate() {
+  const expr = input.value.trim();
+  if (!expr) return;
+
+  addLine('line-input', 'bc> ', expr);
+  input.value = '';
+
+  // History navigation
+  history.unshift(expr);
+  historyIdx = -1;
+  historyBuf = '';
+  updateHistoryUI(expr);
+
+  try {
+    const result = bc.parse(expr);
+    addLine('line-result', '', result);
+    // Copy result on click
+    const lastLine = output.lastChild;
+    lastLine.style.cursor = 'pointer';
+    lastLine.title = 'Click to copy';
+    lastLine.onclick = () => { navigator.clipboard.writeText(result); showNotif('Copied!'); };
+  } catch(err) {
+    addLine('line-error', '', 'Error: ' + err.message);
+  }
+}
+
+function updateHistoryUI(expr) {
+  // Remove placeholder
+  const ph = histList.querySelector('div');
+  if (ph && ph.textContent.includes('No history')) ph.remove();
+
+  const item = document.createElement('div');
+  item.className = 'history-item';
+  item.innerHTML = `<div class="hist-expr">${escHtml(expr)}</div>`;
+  item.onclick = () => { input.value = expr; input.focus(); };
+  histList.insertBefore(item, histList.firstChild);
+
+  histCnt.textContent = history.length + ' item' + (history.length !== 1 ? 's' : '');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function insert(s) {
+  const start = input.selectionStart;
+  const end   = input.selectionEnd;
+  const val   = input.value;
+  input.value = val.slice(0, start) + s + val.slice(end);
+  input.selectionStart = input.selectionEnd = start + s.length;
+  input.focus();
+}
+
+function backspace() {
+  const start = input.selectionStart;
+  const end   = input.selectionEnd;
+  if (start !== end) {
+    input.value = input.value.slice(0,start) + input.value.slice(end);
+    input.selectionStart = input.selectionEnd = start;
+  } else if (start > 0) {
+    input.value = input.value.slice(0,start-1) + input.value.slice(start);
+    input.selectionStart = input.selectionEnd = start - 1;
+  }
+  input.focus();
+}
+
+function clearOutput() {
+  output.innerHTML = '';
+  addLine('line-info', '', 'Output cleared. Ready.');
+}
+
+function showNotif(msg) {
+  const n = document.getElementById('notif');
+  n.textContent = msg;
+  n.classList.add('show');
+  setTimeout(() => n.classList.remove('show'), 1500);
+}
+
+// Keyboard handling
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { evaluate(); e.preventDefault(); }
+  if (e.key === 'ArrowUp') {
+    if (historyIdx === -1) historyBuf = input.value;
+    historyIdx = Math.min(historyIdx + 1, history.length - 1);
+    input.value = history[historyIdx] || '';
+    e.preventDefault();
+  }
+  if (e.key === 'ArrowDown') {
+    historyIdx = Math.max(historyIdx - 1, -1);
+    input.value = historyIdx === -1 ? historyBuf : history[historyIdx];
+    e.preventDefault();
+  }
+});
+
+// Sync UI when settings inputs change
+['scale-input','ibase-input','obase-input'].forEach(id => {
+  document.getElementById(id).addEventListener('change', syncSettings);
+});
+
+// Welcome example
+setTimeout(() => {
+  const examples = [
+    'scale=20; 4*a(1)',
+    '2^64',
+    'scale=15; sqrt(2)',
+    'scale=10; e(1)',
+  ];
+  addLine('line-info', '', '─'.repeat(52));
+  addLine('line-info', '', 'Try the examples below, or type your own:');
+  examples.forEach(ex => {
+    const div = document.createElement('div');
+    div.className = 'line';
+    div.style.cursor = 'pointer';
+    div.title = 'Click to run';
+    const s = document.createElement('span');
+    s.className = 'line-info';
+    s.innerHTML = '  <span style="color:var(--green-dim)">▶</span> ' + escHtml(ex);
+    div.appendChild(s);
+    div.onclick = () => { input.value = ex; evaluate(); };
+    output.appendChild(div);
+  });
+  output.scrollTop = output.scrollHeight;
+}, 100);
+</script>
+</body>
+</html>
