@@ -430,7 +430,7 @@
     <div class="input-row">
       <span class="prompt-label">bc&gt;</span>
       <input id="expr-input" type="text" placeholder="expression…" autocomplete="off" spellcheck="false" autofocus>
-      <button class="btn-run" onclick="evaluate()">Run ↵</button>
+      <button class="btn-run" onclick="runCalc()">Run ↵</button>
     </div>
 
     <div class="meta-row">
@@ -490,7 +490,7 @@
         <!-- Row 7 -->
         <button class="calc-btn span2" onclick="insert('0')">0</button>
         <button class="calc-btn" onclick="insert('.')">.</button>
-        <button class="calc-btn eq"   onclick="evaluate()">=</button>
+        <button class="calc-btn eq"   onclick="runCalc()">=</button>
       </div>
     </div>
 
@@ -570,25 +570,18 @@ class BC {
 
   // ── Recursive-descent parser / evaluator ───────────────────
   parse(src) {
-    // Split on semicolons: execute each statement in order,
-    // return only the last non-empty result (bc behaviour).
     const stmts = src.split(';').map(s => s.trim()).filter(s => s.length > 0);
     let lastResult = null;
-    for (const stmt of stmts) {
-      lastResult = this.parseOne(stmt);
-    }
+    for (const stmt of stmts) lastResult = this.parseOne(stmt);
     return lastResult ?? '';
   }
 
   parseOne(src) {
-    // Handle assignment-like statements: scale = N, var = expr
     const assignRe = /^\s*([a-z_][a-z0-9_]*)\s*=\s*(.+)$/i;
     const m = src.match(assignRe);
     if (m && m[1].toLowerCase() !== 'e') {
       const key = m[1].toLowerCase();
       const val = this.evalExpr(m[2]);
-      // val is stored as bigint with PREC implicit decimal places.
-      // Extract the true integer by dividing out DENOM.
       const intVal = Number(val / this.DENOM());
       if (key === 'scale') {
         this.scale = Math.max(0, Math.min(200, intVal));
@@ -938,10 +931,10 @@ class BC {
 // ──────────────────────────────────────────────────────────────
 const bc      = new BC();
 const output  = document.getElementById('output');
-const input   = document.getElementById('expr-input');
+const exprInput = document.getElementById('expr-input');
 const histList= document.getElementById('history-list');
 const histCnt = document.getElementById('hist-count');
-const history = [];
+const calcHistory = [];
 let historyIdx= -1;
 let historyBuf= '';
 
@@ -971,18 +964,16 @@ function addLine(cls, prefix, text) {
   output.scrollTop = output.scrollHeight;
 }
 
-function evaluate() {
-  // Always sync UI → bc before running, so the scale/ibase/obase boxes work.
-  // If the expression itself contains "scale=N", parseOne() will override afterwards.
+function runCalc() {
   syncSettings();
-  const expr = input.value.trim();
+  const expr = exprInput.value.trim();
   if (!expr) return;
 
   addLine('line-input', 'bc> ', expr);
-  input.value = '';
+  exprInput.value = '';
 
   // History navigation
-  history.unshift(expr);
+  calcHistory.unshift(expr);
   historyIdx = -1;
   historyBuf = '';
   updateHistoryUI(expr);
@@ -1008,10 +999,10 @@ function updateHistoryUI(expr) {
   const item = document.createElement('div');
   item.className = 'history-item';
   item.innerHTML = `<div class="hist-expr">${escHtml(expr)}</div>`;
-  item.onclick = () => { input.value = expr; input.focus(); };
+  item.onclick = () => { exprInput.value = expr; exprInput.focus(); };
   histList.insertBefore(item, histList.firstChild);
 
-  histCnt.textContent = history.length + ' item' + (history.length !== 1 ? 's' : '');
+  histCnt.textContent = calcHistory.length + ' item' + (calcHistory.length !== 1 ? 's' : '');
 }
 
 function escHtml(s) {
@@ -1019,25 +1010,25 @@ function escHtml(s) {
 }
 
 function insert(s) {
-  const start = input.selectionStart;
-  const end   = input.selectionEnd;
-  const val   = input.value;
-  input.value = val.slice(0, start) + s + val.slice(end);
-  input.selectionStart = input.selectionEnd = start + s.length;
-  input.focus();
+  const start = exprInput.selectionStart;
+  const end   = exprInput.selectionEnd;
+  const val   = exprInput.value;
+  exprInput.value = val.slice(0, start) + s + val.slice(end);
+  exprInput.selectionStart = exprInput.selectionEnd = start + s.length;
+  exprInput.focus();
 }
 
 function backspace() {
-  const start = input.selectionStart;
-  const end   = input.selectionEnd;
+  const start = exprInput.selectionStart;
+  const end   = exprInput.selectionEnd;
   if (start !== end) {
-    input.value = input.value.slice(0,start) + input.value.slice(end);
-    input.selectionStart = input.selectionEnd = start;
+    exprInput.value = exprInput.value.slice(0,start) + exprInput.value.slice(end);
+    exprInput.selectionStart = exprInput.selectionEnd = start;
   } else if (start > 0) {
-    input.value = input.value.slice(0,start-1) + input.value.slice(start);
-    input.selectionStart = input.selectionEnd = start - 1;
+    exprInput.value = exprInput.value.slice(0,start-1) + exprInput.value.slice(start);
+    exprInput.selectionStart = exprInput.selectionEnd = start - 1;
   }
-  input.focus();
+  exprInput.focus();
 }
 
 function clearOutput() {
@@ -1053,26 +1044,26 @@ function showNotif(msg) {
 }
 
 // Keyboard handling
-input.addEventListener('keydown', e => {
-  if (e.key === 'Enter') { evaluate(); e.preventDefault(); }
+exprInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { runCalc(); e.preventDefault(); }
   if (e.key === 'ArrowUp') {
-    if (historyIdx === -1) historyBuf = input.value;
-    historyIdx = Math.min(historyIdx + 1, history.length - 1);
-    input.value = history[historyIdx] || '';
+    if (historyIdx === -1) historyBuf = exprInput.value;
+    historyIdx = Math.min(historyIdx + 1, calcHistory.length - 1);
+    exprInput.value = calcHistory[historyIdx] || '';
     e.preventDefault();
   }
   if (e.key === 'ArrowDown') {
     historyIdx = Math.max(historyIdx - 1, -1);
-    input.value = historyIdx === -1 ? historyBuf : history[historyIdx];
+    exprInput.value = calcHistoryIdx === -1 ? historyBuf : calcHistory[historyIdx];
     e.preventDefault();
   }
 });
 
 // Sync UI when settings inputs change
 ['scale-input','ibase-input','obase-input'].forEach(id => {
-  const el = document.getElementById(id);
-  el.addEventListener('change', syncSettings);
-  el.addEventListener('input', syncSettings);
+  const _el = document.getElementById(id);
+  _el.addEventListener('change', syncSettings);
+  _el.addEventListener('input', syncSettings);
 });
 
 // Welcome example
@@ -1094,7 +1085,7 @@ setTimeout(() => {
     s.className = 'line-info';
     s.innerHTML = '  <span style="color:var(--green-dim)">▶</span> ' + escHtml(ex);
     div.appendChild(s);
-    div.onclick = () => { input.value = ex; evaluate(); };
+    div.onclick = () => { exprInput.value = ex; runCalc(); };
     output.appendChild(div);
   });
   output.scrollTop = output.scrollHeight;
