@@ -436,7 +436,7 @@
     <div class="meta-row">
       <div class="meta-item">
         <label>scale</label>
-        <input id="scale-input" type="number" value="10" min="0" max="200" title="소수점 자리수 (precision)">
+        <input id="scale-input" type="number" value="3" min="0" max="200" title="소수점 자리수 (precision)">
       </div>
       <div class="meta-item">
         <label>ibase</label>
@@ -535,7 +535,7 @@
 
 class BC {
   constructor() {
-    this.scale  = 10;
+    this.scale  = 3;
     this.ibase  = 10;
     this.obase  = 10;
     this.vars   = {};
@@ -972,6 +972,9 @@ function addLine(cls, prefix, text) {
 }
 
 function evaluate() {
+  // Always sync UI → bc before running, so the scale/ibase/obase boxes work.
+  // If the expression itself contains "scale=N", parseOne() will override afterwards.
+  syncSettings();
   const expr = input.value.trim();
   if (!expr) return;
 
@@ -1067,7 +1070,9 @@ input.addEventListener('keydown', e => {
 
 // Sync UI when settings inputs change
 ['scale-input','ibase-input','obase-input'].forEach(id => {
-  document.getElementById(id).addEventListener('change', syncSettings);
+  const el = document.getElementById(id);
+  el.addEventListener('change', syncSettings);
+  el.addEventListener('input', syncSettings);
 });
 
 // Welcome example
