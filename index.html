@@ -144,19 +144,18 @@
     min-height: 320px;
     max-height: 420px;
     overflow-y: auto;
-    overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
   #output::-webkit-scrollbar { width: 4px; }
   #output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-  .line { display: flex; gap: 10px; margin-bottom: 4px; overflow-wrap: break-word; word-break: break-all; min-width: 0; }
+  .line { display: flex; gap: 10px; margin-bottom: 4px; }
   .line-prompt { color: var(--green); user-select: none; flex-shrink: 0; }
-  .line-input  { color: var(--text); min-width: 0; overflow-wrap: break-word; }
-  .line-result { color: var(--blue); padding-left: 20px; min-width: 0; overflow-wrap: break-word; word-break: break-all; }
+  .line-input  { color: var(--text); }
+  .line-result { color: var(--blue); padding-left: 20px; }
   .line-error  { color: var(--red); padding-left: 20px; }
-  .line-info   { color: var(--text-muted); padding-left: 20px; font-size: 12px; min-width: 0; overflow-wrap: break-word; }
+  .line-info   { color: var(--text-muted); padding-left: 20px; font-size: 12px; }
   .line-system { color: var(--purple); }
 
   /* ── Input row ── */
@@ -202,6 +201,7 @@
 
   /* Precision row */
   .meta-row {
+    border-top: 1px solid var(--border2);
     padding: 10px 16px;
     display: flex;
     align-items: center;
@@ -320,7 +320,6 @@
   #history-list {
     max-height: 220px;
     overflow-y: auto;
-    overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
@@ -458,40 +457,43 @@
     <div class="btn-pad">
       <div class="btn-pad-header">Keypad</div>
       <div class="btn-grid">
-        <!-- Row 1 -->
+        <!-- Row 1: 함수 -->
         <button class="calc-btn fn"   onclick="insert('sqrt(')">√</button>
-        <button class="calc-btn fn"   onclick="insert('e(')">eˣ</button>
-        <button class="calc-btn fn"   onclick="insert('l(')">ln</button>
-        <button class="calc-btn ctrl" onclick="backspace()">⌫</button>
-        <!-- Row 2 -->
         <button class="calc-btn fn"   onclick="insert('s(')">sin</button>
         <button class="calc-btn fn"   onclick="insert('c(')">cos</button>
         <button class="calc-btn fn"   onclick="insert('a(')">atan</button>
-        <button class="calc-btn op"   onclick="insert('^')">xʸ</button>
-        <!-- Row 3 -->
+        <!-- Row 2: 함수/상수 -->
+        <button class="calc-btn fn"   onclick="insert('e(')">eˣ</button>
+        <button class="calc-btn fn"   onclick="insert('l(')">ln</button>
         <button class="calc-btn const" onclick="insert('4*a(1)')">π</button>
         <button class="calc-btn const" onclick="insert('e(1)')">e</button>
-        <button class="calc-btn op"   onclick="insert('%')">mod</button>
-        <button class="calc-btn op"   onclick="insert('/')">÷</button>
-        <!-- Row 4 -->
+        <!-- Row 3: 연산자 -->
+        <button class="calc-btn op"   onclick="insert('(')">(</button>
+        <button class="calc-btn op"   onclick="insert(')')">)</button>
+        <button class="calc-btn op"   onclick="insert('^')">xʸ</button>
+        <button class="calc-btn ctrl" onclick="backspace()">⌫</button>
+        <!-- Row 4: 숫자 7 8 9 -->
         <button class="calc-btn" onclick="insert('7')">7</button>
         <button class="calc-btn" onclick="insert('8')">8</button>
         <button class="calc-btn" onclick="insert('9')">9</button>
-        <button class="calc-btn op" onclick="insert('*')">×</button>
-        <!-- Row 5 -->
+        <button class="calc-btn op"   onclick="insert('/')">÷</button>
+        <!-- Row 5: 숫자 4 5 6 -->
         <button class="calc-btn" onclick="insert('4')">4</button>
         <button class="calc-btn" onclick="insert('5')">5</button>
         <button class="calc-btn" onclick="insert('6')">6</button>
-        <button class="calc-btn op" onclick="insert('-')">−</button>
-        <!-- Row 6 -->
+        <button class="calc-btn op"   onclick="insert('*')">×</button>
+        <!-- Row 6: 숫자 1 2 3 -->
         <button class="calc-btn" onclick="insert('1')">1</button>
         <button class="calc-btn" onclick="insert('2')">2</button>
         <button class="calc-btn" onclick="insert('3')">3</button>
-        <button class="calc-btn op" onclick="insert('+')">+</button>
-        <!-- Row 7 -->
+        <button class="calc-btn op"   onclick="insert('-')">−</button>
+        <!-- Row 7: 숫자 0 . = -->
         <button class="calc-btn span2" onclick="insert('0')">0</button>
-        <button class="calc-btn" onclick="insert('.')">.</button>
-        <button class="calc-btn eq"   onclick="runCalc()">=</button>
+        <button class="calc-btn op"   onclick="insert('%')">%</button>
+        <button class="calc-btn op"   onclick="insert('+')">+</button>
+        <!-- Row 8: . = -->
+        <button class="calc-btn span2" onclick="insert('.')">.</button>
+        <button class="calc-btn eq span2" onclick="runCalc()">=</button>
       </div>
     </div>
 
@@ -1000,7 +1002,7 @@ function updateHistoryUI(expr) {
   const item = document.createElement('div');
   item.className = 'history-item';
   item.innerHTML = `<div class="hist-expr">${escHtml(expr)}</div>`;
-  item.onclick = () => { exprInput.value = expr; exprInput.focus(); };
+  item.onclick = () => { input.value = expr; exprInput.focus(); };
   histList.insertBefore(item, histList.firstChild);
 
   histCnt.textContent = calcHistory.length + ' item' + (calcHistory.length !== 1 ? 's' : '');
@@ -1055,7 +1057,7 @@ exprInput.addEventListener('keydown', e => {
   }
   if (e.key === 'ArrowDown') {
     historyIdx = Math.max(historyIdx - 1, -1);
-    exprInput.value = calcHistoryIdx === -1 ? historyBuf : calcHistory[historyIdx];
+    exprInput.value = historyIdx === -1 ? historyBuf : calcHistory[historyIdx];
     e.preventDefault();
   }
 });
